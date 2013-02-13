@@ -24,7 +24,7 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 			this._started = false;
 			lang.mixin(this, params);
 			// mixin views configuration to current view instance.
-			if(this.parent.views){
+			if(this.parent && this.parent.views){
 				lang.mixin(this, this.parent.views[this.name]);
 			}
 		},
