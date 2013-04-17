@@ -1,4 +1,4 @@
-define(["dojo/_base/lang", "dojo/Deferred", "dojo/promise/all", "dojo/when"],  function(lang, Deferred, all, when){
+define(["dojo/_base/lang", "dojo/Deferred", "dojo/promise/all", "dojo/when"], function(lang, Deferred, all, when){
 	return function(/*Object*/ config, /*Object*/ parent, /*Object*/ app){
 		// summary:
 		//		model is called to create all of the models for the app, and all models for a view, it will
@@ -47,8 +47,7 @@ define(["dojo/_base/lang", "dojo/Deferred", "dojo/promise/all", "dojo/when"],  f
 		try{
 			createModelPromise = modelCtor(config, params, item);
 		}catch(e){
-			loadModelDeferred.reject(e);
-			return loadModelDeferred.promise;
+			throw new Error("Error creating "+modelLoader+" for model named ["+item+"]: "+e.message);
 		}
 		when(createModelPromise, lang.hitch(this, function(newModel){
 			loadedModels[item] = newModel;
@@ -56,7 +55,7 @@ define(["dojo/_base/lang", "dojo/Deferred", "dojo/promise/all", "dojo/when"],  f
 			loadModelDeferred.resolve(loadedModels);
 			return loadedModels;
 		}), function(e){
-			loadModelDeferred.reject(e);
+			throw new Error("Error loading model named ["+item+"]: "+e.message);
 		});
 		return loadModelDeferred;
 	}

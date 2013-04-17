@@ -1,9 +1,9 @@
 define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare", "dojo/_base/lang",
-	"dojo/Deferred",  "./utils/model", "./utils/constraints"],
+	"dojo/Deferred", "./utils/model", "./utils/constraints"],
 	function(require, when, on, domAttr, declare, lang, Deferred, model, constraints){
 	return declare("dojox.app.ViewBase", null, {
 		// summary:
-		//		View base class with model & definition capabilities. Subclass must implement rendering capabilities.
+		//		View base class with model & controller capabilities. Subclass must implement rendering capabilities.
 		constructor: function(params){
 			// summary:
 			//		Constructs a ViewBase instance.
@@ -14,12 +14,13 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 			//		- id: view id
 			//		- name: view name
 			//		- parent: parent view
-			//		- definition: view definition module identifier
+			//		- controller: view controller module identifier
 			//		- children: children views
 			this.id = "";
 			this.name = "";
 			this.children = {};
 			this.selectedChildren = {};
+			this.loadedStores = {};
 			// private
 			this._started = false;
 			lang.mixin(this, params);
@@ -33,26 +34,75 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 		start: function(){
 			// summary:
 			//		start view object.
-			//		load view template, view definition implement and startup all widgets in view template.
+			//		load view template, view controller implement and startup all widgets in view template.
 			if(this._started){
 				return this;
 			}
 			this._startDef = new Deferred();
 			when(this.load(), lang.hitch(this, function(){
 				// call setupModel, after setupModel startup will be called after startup the loadViewDeferred will be resolved
+				this._createDataStore(this);
 				this._setupModel();
 			}));
 			return this._startDef;
 		},
 
 		load: function(){
-			var defDef = this._loadDefinition();
-			when(defDef, lang.hitch(this, function(definition){
-				if(definition){
-					lang.mixin(this, definition);
+			var vcDef = this._loadViewController();
+			when(vcDef, lang.hitch(this, function(controller){
+				if(controller){
+					lang.mixin(this, controller);
 				}
 			}));
-			return defDef;
+			return vcDef;
+		},
+
+		_createDataStore: function(){
+			// summary:
+			//		Create data store instance for View specific stores
+			//
+			// TODO: move this into a common place for use by main and ViewBase
+			//
+			if(this.parent.loadedStores){
+				lang.mixin(this.loadedStores, this.parent.loadedStores);
+			}
+
+			if(this.stores){
+				//create stores in the configuration.
+				for(var item in this.stores){
+					if(item.charAt(0) !== "_"){//skip the private properties
+						var type = this.stores[item].type ? this.stores[item].type : "dojo/store/Memory";
+						var config = {};
+						if(this.stores[item].params){
+							lang.mixin(config, this.stores[item].params);
+						}
+						// we assume the store is here through dependencies
+						try{
+							var storeCtor = require(type);
+						}catch(e){
+							throw new Error(type+" must be listed in the dependencies");
+						}
+						if(config.data && lang.isString(config.data)){
+							//get the object specified by string value of data property
+							//cannot assign object literal or reference to data property
+							//because json.ref will generate __parent to point to its parent
+							//and will cause infinitive loop when creating StatefulModel.
+							config.data = lang.getObject(config.data);
+						}
+						if(this.stores[item].observable){
+							try{
+								var observableCtor = require("dojo/store/Observable");
+							}catch(e){
+								throw new Error("dojo/store/Observable must be listed in the dependencies");
+							}
+							this.stores[item].store = observableCtor(new storeCtor(config));
+						}else{
+							this.stores[item].store = new storeCtor(config);
+						}
+						this.loadedStores[item] = this.stores[item].store; // add this store to loadedStores for the view							
+					}
+				}
+			}
 		},
 
 		_setupModel: function(){
@@ -60,15 +110,13 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 			//		Load views model if it is not already loaded then call _startup.
 			// tags:
 			//		private
-			
-			if(!this.loadedModels) {
-				var loadModelLoaderDeferred = new Deferred();
+						
+			if(!this.loadedModels){
 				var createPromise;
 				try{
 					createPromise = model(this.models, this.parent, this.app);
 				}catch(e){
-					loadModelLoaderDeferred.reject(e);
-					return loadModelLoaderDeferred.promise;
+					throw new Error("Error creating models: "+e.message);
 				}
 				when(createPromise, lang.hitch(this, function(models){
 					if(models){
@@ -79,7 +127,7 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 					this._startup();
 				}),
 				function(err){
-					loadModelLoaderDeferred.reject(err);
+					throw new Error("Error creating models: "+err.message);					
 				});
 			}else{ // loadedModels already created so call _startup
 				this._startup();				
@@ -108,7 +156,7 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 			constraints.register(this.constraint);
 
 
-			this.app.emit("initLayout", {
+			this.app.emit("app-initLayout", {
 				"view": this, 
 				"callback": lang.hitch(this, function(){
 						//start widget
@@ -126,25 +174,21 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 		},
 
 
-		_loadDefinition: function(){
+		_loadViewController: function(){
 			// summary:
-			//		Load view definition by configuration or by default.
+			//		Load view controller by configuration or by default.
 			// tags:
 			//		private
 			//
-			var definitionDef = new Deferred();
+			var viewControllerDef = new Deferred();
 			var path;
 
-			if(this.definition && (this.definition === "none")){
-				definitionDef.resolve(true);
-				return definitionDef;
-			}else if(this.definition){
-				path = this.definition.replace(/(\.js)$/, "");
+			if(!this.controller){ // no longer using this.controller === "none", if we dont have one it means none.
+				this.app.log("  > in app/ViewBase _loadViewController no controller set for view name=[",this.name,"], parent.name=[",this.parent.name,"]");
+				viewControllerDef.resolve(true);
+				return viewControllerDef;
 			}else{
-				path = this.id.split("_");
-				path.shift();
-				path = path.join("/");
-				path = "./views/" + path;
+				path = this.controller.replace(/(\.js)$/, "");
 			}
 
 			var requireSignal;
@@ -155,11 +199,11 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 					loadFile = path.substring(index+2);
 				}
 				requireSignal = require.on("error", function(error){
-					if (definitionDef.isResolved() || definitionDef.isRejected()) {
+					if(viewControllerDef.isResolved() || viewControllerDef.isRejected()){
 						return;
 					}
-					if(error.info[0] && (error.info[0].indexOf(loadFile)>= 0)){
-						definitionDef.resolve(false);
+					if(error.info[0] && (error.info[0].indexOf(loadFile) >= 0)){
+						viewControllerDef.resolve(false);
 						requireSignal.remove();
 					}
 				});
@@ -168,15 +212,17 @@ define(["require", "dojo/when", "dojo/on", "dojo/dom-attr", "dojo/_base/declare"
 					path = "app/"+path;
 				}
 
-				require([path], function(definition){
-					definitionDef.resolve(definition);
+				require([path], function(controller){
+					viewControllerDef.resolve(controller);
 					requireSignal.remove();
 				});
 			}catch(e){
-				definitionDef.reject(e);
-				requireSignal.remove();
+				viewControllerDef.reject(e);
+				if(requireSignal){
+					requireSignal.remove();
+				}
 			}
-			return definitionDef;
+			return viewControllerDef;
 		},
 
 		init: function(){

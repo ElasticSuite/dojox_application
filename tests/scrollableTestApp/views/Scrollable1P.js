@@ -1,7 +1,7 @@
 define(["dojo/dom", "dojo/dom-style", "dojo/_base/connect", "dojo/_base/lang", "dojo/_base/declare", "dijit/registry", "dojox/mvc/at", 
-"dojox/mobile/TransitionEvent", "dojox/mvc/Repeat", "dojox/mvc/getStateful", "dojox/mvc/Output", 
-"dojox/mobile/RoundRectList", "dojox/mvc/WidgetList", "dojox/mvc/Templated", "dojox/mobile/ListItem", "dojo/text!../templates/RoundRectWidListTemplate.html"],
-function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, Repeat, getStateful, Output, RoundRectList, WidgetList, Templated, 
+"dojox/mobile/TransitionEvent", "dojox/mvc/Repeat", "dojox/mvc/getStateful", "dojox/mvc/Output", "dojo/sniff", 
+"dojox/mobile/RoundRectList", "dojox/mvc/WidgetList", "dojox/mvc/Templated", "dojox/mobile/ListItem", "dojo/text!../views/RoundRectWidListTemplate.html"],
+function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, Repeat, getStateful, Output, has, RoundRectList, WidgetList, Templated, 
 	ListItem, RoundRectWidListTemplate){
 	var _connectResults = []; // events connect result
 
@@ -13,33 +13,8 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 	var insert1Id = 'sc1insert1xP';
 	var insert10Id = 'sc1insert10xP';
 	var remove10Id = 'sc1remove10xP';
-	var wrapperIdA = 'sc1WrapperA';
-	var wrapperIdB = 'sc1WrapperB';
-	var wrapperIdC = 'sc1WrapperC';
-	var wrapperIdD = 'sc1WrapperD';
 
 	var app = null;
-
-	// delete an item
-	deleteResult = function(index){
-		var nextIndex = repeatmodel.get("cursorIndex");
-		if(nextIndex >= index){
-			nextIndex = nextIndex-1;
-		}
-		repeatmodel.model.splice(index, 1);
-		repeatmodel.set("cursorIndex", nextIndex);		
-	};
-	// show an item detail
-	setDetailsContext = function(index){
-		repeatmodel.set("cursorIndex", index);
-		
-	};
-	
-	removeScrollableItem = function(index){
-				var repeatmodel = app.loadedModels.repeatmodels;
-				repeatmodel.model.splice(index, 1);
-				return false; 	 		
-	};
 
 	// insert an item
 	var insertResult = function(index, e){
@@ -52,7 +27,7 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 		}
 		var data = {id:Math.random(), "First": "", "Last": "", "Location": "CA", "Office": "", "Email": "", "Tel": "", "Fax": ""};
 		repeatmodel.model.splice(index+1, 0, new getStateful(data));
-		setDetailsContext(index+1);
+		this.app.setDetailsContext(index+1);
 		var transOpts = {
 			title : "repeatDetails",
 			target : "repeatDetails",
@@ -61,16 +36,6 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 		};
 		new TransitionEvent(e.target, transOpts, e).dispatch(); 
 		
-	};
-
-	// get index from dom node id
-	var getIndexFromId = function(nodeId, perfix){
-		var len = perfix.length;
-		if(nodeId.length <= len){
-			throw Error("repeate node id error.");
-		}
-		var index = nodeId.substring(len, nodeId.length);
-		return parseInt(index);
 	};
 	
 	var showListData = function(/*dojox/mvc/EditStoreRefListController*/ datamodel){
@@ -82,18 +47,6 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 		// datamodel: dojox/mvc/EditStoreRefListController
 		//		The EditStoreRefListController whose model holds the items for the selected list.
 		//
-	/*
-	 					data-dojo-type="dojox/mobile/RoundRectList"
-					data-dojo-mixins="dojox/mvc/WidgetList,dojox/mvc/_InlineTemplateMixin"
-					data-dojo-props="children: this.loadedModels.repeatmodels.model"
-					data-mvc-child-type="dojox/mvc/Templated"
-					data-mvc-child-mixins="dojox/mobile/ListItem"
-					data-mvc-child-props="clickable: true,
-							label: at(this.target, 'First'),
-							transitionOptions: {title:'Details',target:'repeatDetails',url:'#repeatDetails',params:{'cursor':this.indexAtStartup}},
-							onClick: function(){setDetailsContext(this.indexAtStartup);}">					
- 
-	 */	
 		if(!roundRectWidList){
 			var clz = declare([WidgetList, RoundRectList], {});
 			roundRectWidList = new clz({
@@ -104,15 +57,13 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 					clickable: true,
 					onClick: function(){
 						console.log("in onClick this.indexAtStartup="+this.indexAtStartup);
-						setDetailsContext(this.indexAtStartup);}
+						app.setDetailsContext(this.indexAtStartup);}
 				},
 				childBindings: {
-					titleNode: {value: at("rel:", "First")},
+					titleNode: {value: at("rel:", "First")}
 				},
 				templateString: RoundRectWidListTemplate
 			});
-			//roundRectWidList.placeAt(dom.byId("list_container"));
-			//roundRectWidList.placeAt(dom.byId("list_type").parentNode);
 			roundRectWidList.placeAt(dom.byId("addWidgetHere"));
 			roundRectWidList.startup();
 		}else{
@@ -121,7 +72,6 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 	};
 
 	return {
-		// repeate view init
 		init: function(){
 			app = this.app;
 
@@ -129,7 +79,7 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 			var connectResult;
 
 			connectResult = connect.connect(dom.byId(insert1Id), "click", function(e){
-				insertResult(repeatmodel.model.length-1,e);
+				app.insertResult(repeatmodel.model.length-1,e);
 			});
 			_connectResults.push(connectResult);
 
@@ -137,8 +87,8 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 				//Add 10 items to the end of the model
 				app.showProgressIndicator(true);
 				setTimeout(lang.hitch(this,function(){
-					maxentries = repeatmodel.model.length+10;
-					for(i = repeatmodel.model.length; i < maxentries; i++){
+					var maxentries = repeatmodel.model.length+10;
+					for(var i = repeatmodel.model.length; i < maxentries; i++){
 						var data = {id:Math.random(), "First": "First"+repeatmodel.model.length, "Last": "Last"+repeatmodel.model.length, "Location": "CA", "Office": "", "Email": "", "Tel": "", "Fax": ""};
 						repeatmodel.model.splice(repeatmodel.model.length, 0, new getStateful(data));					
 					}
@@ -152,8 +102,8 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 				//remove 10 items to the end of the model
 				app.showProgressIndicator(true);
 				setTimeout(lang.hitch(this,function(){				
-					maxentries = repeatmodel.model.length-10;
-					for(i = repeatmodel.model.length; i > maxentries; i--){
+					var maxentries = repeatmodel.model.length-10;
+					for(var i = repeatmodel.model.length; i >= maxentries; i--){
 						repeatmodel.model.splice(i, 1);
 					}
 					repeatmodel.set("cursorIndex", 0);		
@@ -169,10 +119,7 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 		beforeActivate: function(){
 			// summary:
 			//		view life cycle beforeActivate()
-			// description:
-			//		beforeActivate will call refreshData to create the
-			//		model/controller and show the list.
-			if(dom.byId(backId) && this.app.isTablet){ 
+			if(dom.byId(backId) && !has("phone")){ 
 				domStyle.set(dom.byId(backId), "visibility", "hidden"); // hide the back button in tablet mode
 			}
 			if(dom.byId("tab1WrapperA")){ 
@@ -193,7 +140,6 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 		},
 		
 		
-		// repeate view destroy
 		destroy: function(){
 			var connectResult = _connectResults.pop();
 			while(connectResult){
@@ -201,5 +147,5 @@ function(dom, domStyle, connect, lang, declare, registry, at, TransitionEvent, R
 				connectResult = _connectResults.pop();
 			}
 		}
-	}
+	};
 });

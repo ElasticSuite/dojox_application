@@ -1,17 +1,15 @@
-require(["dojox/app/main", "dojox/json/ref"],
-	function(Application, json){
+require(["dojox/app/main", "dojox/json/ref", "dojo/sniff"],
+	function(Application, json, has){
 
-	var isTablet = false;
-
-	var configurationFile = "./config-phone.json";
-	if(window.innerWidth > 600){
-		configurationFile = "./config-tablet.json";
-		isTablet = true;
-	}
+	var configurationFile = "./config.json";
 
 	require(["dojo/text!"+configurationFile], function(configJson){
 		var config = json.fromJson(configJson);
-		config.isTablet = isTablet;
+		var width = window.innerWidth || document.documentElement.clientWidth;
+		if(width <= 600){
+			has.add("phone", true);
+		}
+		has.add("ie9orLess", has("ie") && (has("ie") <= 9));
 		Application(config);
 	});
 });

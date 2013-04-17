@@ -3,33 +3,36 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 	// module:
 	//		dojox/app/controllers/Load
 	// summary:
-	//		Bind "load" event on dojox/app application instance.
+	//		Bind "app-load" event on dojox/app application instance.
 	//		Load child view and sub children at one time.
 
 	return declare("dojox.app.controllers.Load", Controller, {
 
+
+		_waitingQueue:[],
+
 		constructor: function(app, events){
 			// summary:
-			//		bind "load" event on application instance.
+			//		bind "app-load" event on application instance.
 			//
 			// app:
 			//		dojox/app application instance.
 			// events:
 			//		{event : handler}
 			this.events = {
-				"init": this.init,
-				"load": this.load
+				"app-init": this.init,
+				"app-load": this.load
 			};
 		},
 
 		init: function(event){
-			// when the load controller received "init", before the lifecycle really starts we create the root view
+			// when the load controller received "app-init", before the lifecycle really starts we create the root view
 			// if any. This used to be done in main.js but must be done in Load to be able to create custom
 			// views from the Load controller.
 			//create and start child. return Deferred
 			when(this.createView(event.parent, null, null, {
 					templateString: event.templateString,
-					definition: event.definition
+					controller: event.controller
 			}, null, event.type), function(newView){
 				when(newView.start(), event.callback);
 			});
@@ -41,7 +44,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 			//
 			// example:
 			//		Use trigger() to trigger "loadArray" event, and this function will response the event. For example:
-			//		|	this.trigger("load", {"parent":parent, "viewId":viewId, "viewArray":viewArray, "callback":function(){...}});
+			//		|	this.trigger("app-load", {"parent":parent, "viewId":viewId, "viewArray":viewArray, "callback":function(){...}});
 			//
 			// event: Object
 			//		LoadArray event parameter. It should be like this: {"parent":parent, "viewId":viewId, "viewArray":viewArray, "callback":function(){...}}
@@ -51,9 +54,8 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 			//		If the caller need to use the return value, pass callback function in event parameter and process return value in callback function.
 
 			this.app.log("in app/controllers/Load event.viewId="+event.viewId+" event =", event);
-			var parent = event.parent || this.app;
 			var views = event.viewId || "";
-			viewArray = [];
+			var viewArray = [];
 			// create an array from the diff views in event.viewId (they are separated by +)
 			var parts = views.split('+');
 			while(parts.length > 0){ 	
@@ -61,34 +63,59 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 				viewArray.push(viewId);
 			}
 
-			var params = event.params || "";
 			var def;
-			if(viewArray && viewArray.length > 0){			
+			this.proceedLoadViewDef = new Deferred();
+			if(viewArray && viewArray.length > 1){
 				// loop thru the array calling loadView for each item in the array
-				for(var i=0; i<viewArray.length-1; i++){
+				for(var i = 0; i < viewArray.length-1; i++){
 					var newEvent = lang.clone(event);
-					newEvent.callback = null;  // skip callback until after last view is loaded.
+					newEvent.callback = null;	// skip callback until after last view is loaded.
 					newEvent.viewId = viewArray[i];
-					this.loadView(newEvent);
+					this._waitingQueue.push(newEvent);
 				}
-				// for last view leave the callback to be notified				
-				var newEvent = lang.clone(event);
-				newEvent.viewId = viewArray[i];
-				def = this.loadView(newEvent);
-				return def;
+				this.proceedLoadView(this._waitingQueue.shift());
+				when(this.proceedLoadViewDef, lang.hitch(this, function(){
+					// for last view leave the callback to be notified
+					var newEvent = lang.clone(event);
+					newEvent.viewId = viewArray[i];
+					def = this.loadView(newEvent);
+					return def;
+				}));
 			}else{
-				var def = this.loadView(event);
+				def = this.loadView(event);
 				return def;
 			}
+		},
+		
+		proceedLoadView: function(loadEvt){
+			// summary:
+			//		Proceed load queue by FIFO by default.
+			//		If load is in proceeding, add the next load to waiting queue.
+			//
+			// loadEvt: Object
+			//		LoadArray event parameter. It should be like this: {"parent":parent, "viewId":viewId, "viewArray":viewArray, "callback":function(){...}}
+
+			var def = this.loadView(loadEvt);
+			when(def, lang.hitch(this, function(){
+						this.app.log("in app/controllers/Load proceedLoadView back from loadView for event", loadEvt);
+						var nextEvt = this._waitingQueue.shift();
+						if(nextEvt){
+							this.app.log("in app/controllers/Load proceedLoadView back from loadView calling this.proceedLoadView(nextEvt) for ",nextEvt);
+							this.proceedLoadView(nextEvt);
+						}else{
+							this._waitingQueue = [];
+							this.proceedLoadViewDef.resolve();
+						}
+			}));
 		},
 
 		loadView: function(event){
 			// summary:
-			//		Response to dojox/app "load" event.
+			//		Response to dojox/app "app-load" event.
 			//
 			// example:
-			//		Use trigger() to trigger "load" event, and this function will response the event. For example:
-			//		|	this.trigger("load", {"parent":parent, "viewId":viewId, "callback":function(){...}});
+			//		Use trigger() to trigger "app-load" event, and this function will response the event. For example:
+			//		|	this.trigger("app-load", {"parent":parent, "viewId":viewId, "callback":function(){...}});
 			//
 			// event: Object
 			//		Load event parameter. It should be like this: {"parent":parent, "viewId":viewId, "callback":function(){...}}
@@ -139,6 +166,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 				if(params){
 					view.params = params;
 				}
+				this.app.log("in app/controllers/Load createChild view is already loaded so return the loaded view with the new parms ",view);
 				return view;
 			}
 			var def = new Deferred();
@@ -162,7 +190,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 			// name: String
 			//		view name.
 			// mixin: String
-			//		additional property to be mixed into the view (templateString, definition...)
+			//		additional property to be mixed into the view (templateString, controller...)
 			// params: Object
 			//		params of this view.
 			// type: String

@@ -21,7 +21,6 @@
 	"views": {
 
 		"home": { 
-			"definition" : "none",
 			"template": "dojox/app/tests/doh/doesnotexist.html"
 		}
 

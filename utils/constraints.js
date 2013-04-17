@@ -13,9 +13,9 @@ define(["dojo/_base/array"], function(arr){
 			// returns:
 			//		the selected child view for this constraint
 			var type = typeof(constraint);
-			var hash = (type == "string" || type == "number")?constraint:constraint.__hash;
-			return (view && view.selectedChildren && view.selectedChildren[hash])?
-				view.selectedChildren[hash]:null;
+			var hash = (type == "string" || type == "number") ? constraint : constraint.__hash;
+			return (view && view.selectedChildren && view.selectedChildren[hash]) ?
+				view.selectedChildren[hash] : null;
 		},
 
 		setSelectedChild: function(view, constraint, child){
@@ -29,8 +29,35 @@ define(["dojo/_base/array"], function(arr){
 			// child: View
 			//		the child to select
 			var type = typeof(constraint);
-			var hash = (type == "string" || type == "number")?constraint:constraint.__hash;
+			var hash = (type == "string" || type == "number") ? constraint : constraint.__hash;
 			view.selectedChildren[hash] = child;
+		},
+
+
+		getAllSelectedChildren: function(view, selChildren){
+			// summary:
+			//		get current all selected children for this view and it's selected subviews
+			//
+			// view: View
+			//		the View to get the child from
+			//
+			// selChildren: Array
+			//		the Array of the subChildren found
+			//
+			// returns:
+			//		selChildren array of all of the selected child views
+			//
+			selChildren = selChildren || [];
+			if(view && view.selectedChildren){
+				for(var hash in view.selectedChildren){
+					if(view.selectedChildren[hash]){
+						var subChild = view.selectedChildren[hash];
+						selChildren.push(subChild);
+						this.getAllSelectedChildren(subChild, selChildren);
+					}
+				}
+			}
+			return selChildren;
 		},
 
 		register: function(constraint){
@@ -69,4 +96,4 @@ define(["dojo/_base/array"], function(arr){
 			}
 		}
 	};
-})
+});

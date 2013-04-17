@@ -1,10 +1,9 @@
 define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare", "dojo/_base/config",
 	"dojo/_base/window", "dojo/Evented", "dojo/Deferred", "dojo/when", "dojo/has", "dojo/on", "dojo/ready",
 	"dojo/dom-construct", "dojo/dom-attr", "./utils/model", "./utils/nls", "./module/lifecycle",
-	"./utils/hash", "./utils/constraints"],
+	"./utils/hash", "./utils/constraints", "./utils/config"],
 	function(require, kernel, lang, declare, config, win, Evented, Deferred, when, has, on, ready, domConstruct, domAttr,
-		 model, nls, lifecycle, hash, constraints){
-	kernel.experimental("dojox/app");
+		 model, nls, lifecycle, hash, constraints, configUtils){
 
 	has.add("app-log-api", (config["app"] || {}).debugApp);
 
@@ -17,6 +16,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 			this.controllers = [];
 			this.children = {};
 			this.loadedModels = {};
+			this.loadedStores = {};
 			// Create a new domNode and append to body
 			// Need to bind startTransition event on application domNode,
 			// Because dojox/mobile/ViewController bind startTransition event on document.body
@@ -57,7 +57,17 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 							//and will cause infinitive loop when creating StatefulModel.
 							config.data = lang.getObject(config.data);
 						}
-						params.stores[item].store = new storeCtor(config);
+						if(params.stores[item].observable){
+							try{
+								var observableCtor = require("dojo/store/Observable");
+							}catch(e){
+								throw new Error("dojo/store/Observable must be listed in the dependencies");
+							}
+							params.stores[item].store = observableCtor(new storeCtor(config));
+						}else{
+							params.stores[item].store = new storeCtor(config);
+						}
+						this.loadedStores[item] = params.stores[item].store;							
 					}
 				}
 			}
@@ -94,7 +104,9 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 					});
 				}catch(e){
 					def.reject(e);
-					requireSignal.remove();
+					if(requireSignal){
+						requireSignal.remove();
+					}
 				}
 
 				var controllerDef = new Deferred();
@@ -159,7 +171,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 		setDomNode: function(domNode){
 			var oldNode = this.domNode;
 			this.domNode = domNode;
-			this.emit("domNode", {
+			this.emit("app-domNode", {
 				oldNode: oldNode,
 				newNode: domNode
 			});
@@ -169,7 +181,8 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 			// create application controller instance
 			// move set _startView operation from history module to application
 			var currentHash = window.location.hash;
-			this._startView = (((currentHash && currentHash.charAt(0) == "#") ? currentHash.substr(1) : currentHash) || this.defaultView).split('&')[0];
+		//	this._startView = (((currentHash && currentHash.charAt(0) == "#") ? currentHash.substr(1) : currentHash) || this.defaultView).split('&')[0];
+			this._startView = hash.getTarget(currentHash, this.defaultView);
 			this._startParams = hash.getParams(currentHash);
 		},
 
@@ -185,8 +198,8 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 				this.constraint = "center";
 			}
 			var emitLoad = function(){
-				// emit "load" event and let controller to load view.
-				this.emit("load", {
+				// emit "app-load" event and let controller to load view.
+				this.emit("app-load", {
 					viewId: this.defaultView,
 					params: this._startParams,
 					callback: lang.hitch(this, function (){
@@ -214,7 +227,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 							constraints.setSelectedChild(this, constraint, this.children[this.id + '_' + selectId]);
 						}
 						// transition to startView. If startView==defaultView, that means initial the default view.
-						this.emit("transition", {
+						this.emit("app-transition", {
 							viewId: this._startView,
 							opts: { params: this._startParams }
 						});
@@ -222,16 +235,16 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 					})
 				});
 			};
-			when(controllers, lang.hitch(this, function(result){
+			when(controllers, lang.hitch(this, function(){
 				if(this.template){
-					// emit "init" event so that the Load controller can initialize root view
-					this.emit("init", {
-						app: this,  // pass the app into the View so it can have easy access to app
+					// emit "app-init" event so that the Load controller can initialize root view
+					this.emit("app-init", {
+						app: this,	// pass the app into the View so it can have easy access to app
 						name: this.name,
 						type: this.type,
 						parent: this,
 						templateString: this.templateString,
-						definition: this.definition,
+						controller: this.controller,
 						callback: lang.hitch(this, function(view){
 							this.setDomNode(view.domNode);
 							emitLoad.call(this);
@@ -244,7 +257,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 		}		
 	});
 
-	function generateApp(config, node, appSchema, validate){
+	function generateApp(config, node){
 		// summary:
 		//		generate the application
 		//
@@ -253,6 +266,10 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 		// node: domNode
 		//		domNode.
 		var path;
+
+		// call configProcessHas to process any has blocks in the config
+		config = configUtils.configProcessHas(config);
+
 		if(!config.loaderConfig){
 			config.loaderConfig = {};
 		}
@@ -303,7 +320,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 				var app = new App(config, node || win.body());
 
 				if(has("app-log-api")){
-					app.log = function(){  
+					app.log = function(){
 						// summary:
 						//		If config is set to turn on app logging, then log msg to the console
 						//
@@ -322,6 +339,20 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 				}else{
 					app.log = function(){}; // noop
 				}
+
+				app.transitionToView = function(/*DomNode*/target, /*Object*/transitionOptions, /*Event?*/triggerEvent){
+					// summary:
+					//		A convenience function to fire the transition event to transition to the view.
+					//
+					// target:
+					//		The DOM node that initiates the transition (for example a ListItem).
+					// transitionOptions:
+					//		Contains the transition options.
+					// triggerEvent:
+					//		The event that triggered the transition (for example a touch event on a ListItem).
+					var opts = {bubbles:true, cancelable:true, detail: transitionOptions, triggerEvent: triggerEvent||null};	
+					on.emit(target,"startTransition", opts);
+				};
 
 				app.setStatus(app.lifecycle.STARTING);
 				// Create global namespace for application.

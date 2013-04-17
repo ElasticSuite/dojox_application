@@ -1,13 +1,6 @@
-define(["dojo/dom", "dojo/_base/lang", "dojo/dom-style", "dijit/registry", "dojox/mvc/at", "dojox/mobile/TransitionEvent"],
-	function(dom, lang, domStyle, registry, at, TransitionEvent){
-
-	var wrapperId = 'cfg1Wrapper';
+define([], function(){
 
 	var app = null;
-
-	selectCompleted = function(index){
-		app.selected_configuration_item = index;
-	};
 
 	return {
 		init: function(){
@@ -15,7 +8,9 @@ define(["dojo/dom", "dojo/_base/lang", "dojo/dom-style", "dijit/registry", "dojo
 		},
 		
 		beforeActivate: function(){
-			app.stopTransition = false;
+			if(app){
+				app.stopTransition = false;
+			}
 			//console.log("configuration/ScrollableListSelection beforeActivate called this.app.selected_configuration_item=",this.app.selected_configuration_item);
 		},
 		
@@ -35,8 +30,9 @@ define(["dojo/dom", "dojo/_base/lang", "dojo/dom-style", "dijit/registry", "dojo
 			//domStyle.set(dom.byId("configurewrapper"), "visibility", "hidden"); // hide the items list 
 		},
 
+		// view destroy, this destroy function can be removed since it is empty
 		destroy: function(){
-			// _WidgetBase.on listener is automatically destroyed when the Widget itself his.
+			// _WidgetBase.on listener is automatically destroyed when the Widget itself is. 
 		}
 	}
 });

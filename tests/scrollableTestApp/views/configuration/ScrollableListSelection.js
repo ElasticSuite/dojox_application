@@ -1,13 +1,6 @@
-define(["dojo/dom", "dojo/_base/lang", "dojo/dom-style", "dijit/registry", "dojox/mvc/at", "dojox/mobile/TransitionEvent"],
-	function(dom, lang, domStyle, registry, at, TransitionEvent){
-
-	var wrapperId = 'cfg1Wrapper';
+define([], function(){
 
 	var app = null;
-
-	selectCompleted = function(index){
-		app.selected_configuration_item = index;
-	};
 
 	return {
 		init: function(){
@@ -33,10 +26,6 @@ define(["dojo/dom", "dojo/_base/lang", "dojo/dom-style", "dijit/registry", "dojo
 			//console.log("configuration/ScrollableListSelection afterDeactivate called this.app.selected_configuration_item=",this.app.selected_configuration_item);
 			//console.log("setting configurewrapper hidden");
 			//domStyle.set(dom.byId("configurewrapper"), "visibility", "hidden"); // hide the items list 
-		},
-
-		destroy: function(){
-			// _WidgetBase.on listener is automatically destroyed when the Widget itself his.
 		}
 	}
 });

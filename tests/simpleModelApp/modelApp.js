@@ -70,11 +70,8 @@ function(win, Application, jsonRef, config, has){
 		"Tel": "408-764-1234",
 		"Fax": "408-764-4321"
 	}];
-	var config = jsonRef.fromJson(config);
-	// on IE use the HistoryHash controller instead of the History controller.
-	//console.log("has(ie)="+has("ie"));
-	config.controllers[0] = has("ie") ? "dojox/app/controllers/HistoryHash" : "dojox/app/controllers/History";		
-	//console.log("config.controllers[0]="+config.controllers[0]);
-	Application(config);
+	var cfg = jsonRef.fromJson(config);
+	has.add("ie9orLess", has("ie") && (has("ie") <= 9));
+	Application(cfg);
 
 });

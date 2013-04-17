@@ -4,22 +4,22 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 	// module:
 	//		dojox/app/controllers/LayoutBase
 	// summary:
-	//		Bind "layout" and "select" events on dojox/app application instance.
+	//		Bind "app-initLayout", "app-layoutView" and "app-resize" events on application instance.
 
 	return declare("dojox.app.controllers.LayoutBase", Controller, {
 
 		constructor: function(app, events){
 			// summary:
-			//		bind "initLayout" and "layoutView" events on application instance.
+			//		bind "app-initLayout", "app-layoutView" and "app-resize" events on application instance.
 			//
 			// app:
 			//		dojox/app application instance.
 			// events:
 			//		{event : handler}
 			this.events = {
-				"initLayout": this.initLayout,
-				"layoutView": this.layoutView,
-				"resize": this.onResize
+				"app-initLayout": this.initLayout,
+				"app-layoutView": this.layoutView,
+				"app-resize": this.onResize
 			};
 			// if we are using dojo mobile & we are hiding address bar we need to be bit smarter and listen to
 			// dojo mobile events instead
@@ -35,8 +35,8 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 			this._doResize(this.app);
 			// this is needed to resize the children on an orientation change or a resize of the browser.
 			// it was being done in _doResize, but was not needed for every call to _doResize.
-			for(var hash in this.app.selectedChildren){  // need this to handle all selectedChildren
-				if(this.app.selectedChildren[hash]) {
+			for(var hash in this.app.selectedChildren){	// need this to handle all selectedChildren
+				if(this.app.selectedChildren[hash]){
 					this._doResize(this.app.selectedChildren[hash]);
 				}
 			}
@@ -45,16 +45,16 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 		
 		initLayout: function(event){
 			// summary:
-			//		Response to dojox/app "initLayout" event.
+			//		Response to dojox/app "app-initLayout" event.
 			//
 			// example:
-			//		Use emit to trigger "initLayout" event, and this function will respond to the event. For example:
-			//		|	this.app.emit("initLayout", view);
+			//		Use emit to trigger "app-initLayout" event, and this function will respond to the event. For example:
+			//		|	this.app.emit("app-initLayout", view);
 			//
 			// event: Object
 			// |		{"view": view, "callback": function(){}};
-			domAttr.set(event.view.domNode, "id", event.view.id);  // Set the id for the domNode
-			if(event.callback){   // if the event has a callback, call it.
+			domAttr.set(event.view.domNode, "id", event.view.id);	// Set the id for the domNode
+			if(event.callback){	// if the event has a callback, call it.
 				event.callback();
 			}
 		},
@@ -68,7 +68,6 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 
 			if(!view){
 				console.warn("layout empty view.");
-				return;
 			}
 		},
 
@@ -84,11 +83,11 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 
 		layoutView: function(event){
 			// summary:
-			//		Response to dojox/app "layoutView" event.
+			//		Response to dojox/app "app-layoutView" event.
 			//
 			// example:
-			//		Use emit to trigger "layoutView" event, and this function will response the event. For example:
-			//		|	this.app.emit("layoutView", view);
+			//		Use emit to trigger "app-layoutView" event, and this function will response the event. For example:
+			//		|	this.app.emit("app-layoutView", view);
 			//
 			// event: Object
 			// |		{"parent":parent, "view":view, "removeView": boolean}
@@ -101,16 +100,19 @@ function(lang, declare, has, win, config, domAttr, topic, domStyle, constraints,
 			
 			// if the parent has a child in the view constraint it has to be hidden, and this view displayed.
 			var parentSelChild = constraints.getSelectedChild(parent, view.constraint);
-			if(event.removeView){  // if this view is being removed set display to none and the selectedChildren entry to null
+			if(event.removeView){	// if this view is being removed set display to none and the selectedChildren entry to null
+				view.viewShowing = false;
 				this.hideView(view);
 				if(view == parentSelChild){
-					constraints.setSelectedChild(parent, view.constraint, null);  // remove from selectedChildren
+					constraints.setSelectedChild(parent, view.constraint, null);	// remove from selectedChildren
 				}
 			}else if(view !== parentSelChild){
 				if(parentSelChild){
 				//	domStyle.set(parentSelChild.domNode, "zIndex", 25);
+					parentSelChild.viewShowing = false;
 					this.hideView(parentSelChild);
 				}
+				view.viewShowing = true;
 				this.showView(view);
 				//domStyle.set(view.domNode, "zIndex", 50);
 				constraints.setSelectedChild(parent, view.constraint, view);
