@@ -47,7 +47,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 			// event: Object
 			//		"app-transition" event parameter. It should be like this: {"viewId": viewId, "opts": opts}
 			
-			this.proceeding = (event.opts && event.opts.params && event.opts.params.waitToProceed); // waitToProceed passed when visible is true to delay processing.
+			//this.proceeding = (event.opts && event.opts.params && event.opts.params.waitToProceed); // waitToProceed passed when visible is true to delay processing.
 			
 			//		"app-transition" event parameter. It should be like: {"viewId": viewId, "opts": opts}
 			var F = MODULE+":transition";
