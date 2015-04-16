@@ -208,15 +208,16 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 					initLoad: true,
 					params: this._startParams,
 					callback: lang.hitch(this, function (){
-						this.emit("app-transition", {
-							viewId: this.defaultView,
-							forceTransitionNone: true, // we want to avoid the transition on the first display for the defaultView
-							opts: { params: this._startParams }
-						});
 						if(this.defaultView !== this._startView){
 							// transition to startView. If startView==defaultView, that means initial the default view.
 							this.emit("app-transition", {
 								viewId: this._startView,
+								opts: { params: this._startParams }
+							});
+						} else {
+							this.emit("app-transition", {
+								viewId: this.defaultView,
+								forceTransitionNone: true, // we want to avoid the transition on the first display for the defaultView
 								opts: { params: this._startParams }
 							});
 						}
