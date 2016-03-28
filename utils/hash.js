@@ -141,7 +141,7 @@ var hashUtil = {
 			for(var item in params){
 				var value = params[item];
 				if(item && value != null){
-					paramStr = paramStr+"&"+item+"="+params[item];
+					paramStr = paramStr+"&"+item+"="+encodeURIComponent(params[item]);
 				}
 			}
 			return paramStr; // String
