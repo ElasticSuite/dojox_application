@@ -67,7 +67,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 						}else{
 							params.stores[item].store = new storeCtor(config);
 						}
-						this.loadedStores[item] = params.stores[item].store;							
+						this.loadedStores[item] = params.stores[item].store;
 					}
 				}
 			}
@@ -193,7 +193,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 		startup: function(){
 			// load controllers and views
 			//
-			this.selectedChildren = {};			
+			this.selectedChildren = {};
 			var controllers = this.createControllers(this.params.controllers);
 			// constraint on app
 			if(this.hasOwnProperty("constraint")){
@@ -244,7 +244,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 					emitLoad.call(this);
 				}
 			}));
-		}		
+		}
 	});
 
 	function generateApp(config, node){
@@ -276,7 +276,7 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 			}
 			config.loaderConfig.paths["app"] = path;
 		}
-		require(config.loaderConfig);
+		//require(config.loaderConfig);
 
 		if(!config.modules){
 			config.modules = [];
@@ -314,10 +314,10 @@ define(["require", "dojo/_base/kernel", "dojo/_base/lang", "dojo/_base/declare",
 						// summary:
 						//		If config is set to turn on app logging, then log msg to the console
 						//
-						// arguments: 
-						//		the message to be logged, 
-						//		all but the last argument will be treated as Strings and be concatenated together, 
-						//      the last argument can be an object it will be added as an argument to the console.log 						
+						// arguments:
+						//		the message to be logged,
+						//		all but the last argument will be treated as Strings and be concatenated together,
+						//      the last argument can be an object it will be added as an argument to the console.log
 						var msg = "";
 						try{
 							for(var i = 0; i < arguments.length-1; i++){

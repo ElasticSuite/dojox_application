@@ -28,7 +28,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 				"app-transition": this.transition,
 				"app-domNode": this.onDomNodeChange
 			};
-			require([this.app.transit || "dojox/css3/transit"], function(t){
+			require([app.transit || "dojox/css3/transit"], function(t){
 				transit = t;
 			});
 			if(this.app.domNode){
@@ -46,9 +46,9 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 			//
 			// event: Object
 			//		"app-transition" event parameter. It should be like this: {"viewId": viewId, "opts": opts}
-			
+
 			//this.proceeding = (event.opts && event.opts.params && event.opts.params.waitToProceed); // waitToProceed passed when visible is true to delay processing.
-			
+
 			//		"app-transition" event parameter. It should be like: {"viewId": viewId, "opts": opts}
 			var F = MODULE+":transition";
 			this.app.log(LOGKEY,F," ");
@@ -56,12 +56,12 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 			this.app.log(F,"event.viewId=["+event.viewId+"]","event.opts=",event.opts);
 
 			var viewsId = event.viewId || "";
-			this.proceedingSaved = this.proceeding;	
+			this.proceedingSaved = this.proceeding;
 			var parts = viewsId.split('+');
 			var removePartsTest = viewsId.split('-');
 			var viewId, newEvent;
 			if(parts.length > 0 || removePartsTest.length > 0){
-				while(parts.length > 1){ 	
+				while(parts.length > 1){
 					viewId = parts.shift();
 					newEvent = lang.clone(event);
 					if(viewId.indexOf("-") >= 0){ // there is a remove
@@ -206,7 +206,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 				transitionEvt = this.waitingQueue.shift();
 				this.app.log(F+" shifted waitingQueue to process", transitionEvt);
 			}
-			
+
 			this.proceeding = true;
 
 			this.app.log(F+" calling trigger load", transitionEvt);
@@ -270,7 +270,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 			}
 			if(!transition && parentView.views[transitionTo]){
 				transition = parentView.views[transitionTo].transition;
-			} 
+			}
 			if(!transition){
 				transition = parentView.transition;
 			}
@@ -304,7 +304,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 					if(item == view){		// it is for this view
 						// need to add these params for the view
 						viewParams = lang.mixin(viewParams, value);
-					} 
+					}
 				}else{	// these params are for all views, so add them
 					if(item && value != null){
 						viewParams[item] = params[item];
@@ -394,7 +394,7 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/has", "dojo/on
 				if(next !== current){ // nothing to remove
 					this.app.log(F+" called with removeView true, but that view is not available to remove");
 					return;	// trying to remove a view which is not showing
-				}	
+				}
 				this.app.log(LOGKEY,F,"Transition Remove current From=["+currentSubNames+"]");
 				// if next == current we will set next to null and remove the view with out a replacement
 				next = null;

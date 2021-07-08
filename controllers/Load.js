@@ -1,5 +1,5 @@
-define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Deferred", "dojo/when", "dojo/dom-style", "../Controller"],
-	function(require, lang, declare, on, Deferred, when, domStyle, Controller, View){
+define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Deferred", "dojo/when", "dojo/dom-style", "../Controller", "app/views"],
+	function(require, lang, declare, on, Deferred, when, domStyle, Controller, appViews, View){
 	// module:
 	//		dojox/app/controllers/Load
 	// summary:
@@ -214,7 +214,19 @@ define(["require", "dojo/_base/lang", "dojo/_base/declare", "dojo/on", "dojo/Def
 			//		protected
 			var def = new Deferred();
 			var app = this.app;
-			require([type?type:"../View"], function(View){
+      if (appViews && appViews.default && appViews.default[type]) {
+        appViews.default[type]().then(function({ default: View }){
+          var newView = new View(lang.mixin({
+            "app": app,
+            "id": id,
+            "name": name,
+            "parent": parent
+          }, { "params": params }, mixin));
+          def.resolve(newView);
+        });
+        return def;
+      }
+      require([type?type:"../View"], function(View){
 				var newView = new View(lang.mixin({
 					"app": app,
 					"id": id,
